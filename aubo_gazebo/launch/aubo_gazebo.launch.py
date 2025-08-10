@@ -1,31 +1,42 @@
-
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    IncludeLaunchDescription,
     OpaqueFunction,
+    IncludeLaunchDescription,
+    ExecuteProcess,
     RegisterEventHandler,
 )
-from launch.conditions import IfCondition, UnlessCondition
-from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (
+    Command,
+    FindExecutable,
+    LaunchConfiguration,
+    PathJoinSubstitution,
+    TextSubstitution,
+)
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
+from launch_ros.substitutions import FindPackageShare 
+
+from ament_index_python.packages import get_package_share_directory
+import os
+from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
 
 
 def launch_setup(context, *args, **kwargs):
 
-    # Initialize Arguments
+    # Export GAZEBO_MODEL_PATH to include aubo_description's gazebo/models directory
+    aubo_description_share = get_package_share_directory("aubo_description")
+    os.environ["GAZEBO_MODEL_PATH"] = (
+        aubo_description_share + ":" + os.environ.get("GAZEBO_MODEL_PATH", "")
+    )
+
+    # Arguments
     robot_type = LaunchConfiguration("robot_type")
-    
-    # General arguments
     runtime_config_package = LaunchConfiguration("runtime_config_package")
     controllers_file = LaunchConfiguration("controllers_file")
     description_package = LaunchConfiguration("description_package")
     description_file = LaunchConfiguration("description_file")
-    start_joint_controller = LaunchConfiguration("start_joint_controller")
-    initial_joint_controller = LaunchConfiguration("initial_joint_controller")
     launch_rviz = LaunchConfiguration("launch_rviz")
 
     initial_joint_controllers = PathJoinSubstitution(
@@ -36,6 +47,7 @@ def launch_setup(context, *args, **kwargs):
         [FindPackageShare(description_package), "rviz", "view_robot.rviz"]
     )
 
+    # Robot description from xacro
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
@@ -44,13 +56,12 @@ def launch_setup(context, *args, **kwargs):
                 [FindPackageShare(description_package), "urdf/xacro/inc", description_file]
             ),
             " ",
-            "aubo_type:=",
-             robot_type,
-            " ",
+            "aubo_type:=", robot_type, " ",
         ]
     )
     robot_description = {"robot_description": robot_description_content}
 
+    # Robot State Publisher
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -58,6 +69,14 @@ def launch_setup(context, *args, **kwargs):
         parameters=[{"use_sim_time": True}, robot_description],
     )
 
+    # Joint State Broadcaster
+    joint_state_broadcaster_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
+    )
+
+    # RViz
     rviz_node = Node(
         package="rviz2",
         executable="rviz2",
@@ -67,13 +86,6 @@ def launch_setup(context, *args, **kwargs):
         condition=IfCondition(launch_rviz),
     )
 
-    joint_state_broadcaster_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
-    )
-
-    # Delay rviz start after `joint_state_broadcaster`
     delay_rviz_after_joint_state_broadcaster_spawner = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=joint_state_broadcaster_spawner,
@@ -81,116 +93,68 @@ def launch_setup(context, *args, **kwargs):
         )
     )
 
-    # There may be other controllers of the joints, but this is the initially-started one
-    
-
-    # Gazebo nodes
-    gazebo = IncludeLaunchDescription(
+    # Start Gazebo Harmonic (server + client GUI)
+    pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
+    gazebo_process = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [FindPackageShare("gazebo_ros"), "/launch", "/gazebo.launch.py"]
+            os.path.join(pkg_ros_gz_sim, "launch", "gz_sim.launch.py"),
         ),
+        launch_arguments={
+            "gz_args": ['empty.sdf', TextSubstitution(text=" -r -v 4")],
+            "on_exit_shutdown": "true",
+        }.items(),
     )
 
-    # Spawn robot
-    gazebo_spawn_robot = Node(
-        package="gazebo_ros",
-        executable="spawn_entity.py",
-        name="spawn_aubo",
-        arguments=["-entity", "aubo", "-topic", "robot_description"],
+    # Spawn robot into Gazebo Harmonic
+    spawn_robot_process = ExecuteProcess(
+        cmd=[
+            "ros2", "run", "ros_gz_sim", "create",
+            "-name", "aubo",
+            "-topic", "robot_description",
+        ],
         output="screen",
     )
 
-    nodes_to_start = [
+    return [
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         delay_rviz_after_joint_state_broadcaster_spawner,
-        gazebo,
-        gazebo_spawn_robot,
+        gazebo_process,
+        spawn_robot_process,
     ]
-
-    return nodes_to_start
 
 
 def generate_launch_description():
-    declared_arguments = []
-    # UR specific arguments
-    declared_arguments.append(
+    declared_arguments = [
         DeclareLaunchArgument(
             "robot_type",
             description="Type/series of used aubo robot.",
             choices=["aubo_i5", "aubo_C3"],
             default_value="aubo_i5",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "safety_limits",
-            default_value="true",
-            description="Enables the safety limits controller if true.",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "safety_pos_margin",
-            default_value="0.15",
-            description="The margin to lower and upper limits in the safety controller.",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "safety_k_position",
-            default_value="20",
-            description="k-position factor in the safety controller.",
-        )
-    )
-    # General arguments
-    declared_arguments.append(
+        ),
         DeclareLaunchArgument(
             "runtime_config_package",
             default_value="aubo_gazebo",
-            description='Package with the controller\'s configuration in "config" folder. \
-        Usually the argument is not set, it enables use of a custom setup.',
-        )
-    )
-    declared_arguments.append(
+            description="Package with the controller's configuration in config folder.",
+        ),
         DeclareLaunchArgument(
             "controllers_file",
             default_value="aubo_controllers.yaml",
             description="YAML file with the controllers configuration.",
-        )
-    )
-    declared_arguments.append(
+        ),
         DeclareLaunchArgument(
             "description_package",
             default_value="aubo_description",
-            description="Description package with robot URDF/XACRO files. Usually the argument \
-        is not set, it enables use of a custom description.",
-        )
-    )
-    declared_arguments.append(
+            description="Description package with robot URDF/XACRO files.",
+        ),
         DeclareLaunchArgument(
             "description_file",
             default_value="aubo_ros2.xacro",
             description="URDF/XACRO description file with the robot.",
-        )
-    )
-   
-    declared_arguments.append(
+        ),
         DeclareLaunchArgument(
-            "start_joint_controller",
-            default_value="true",
-            description="Enable headless mode for robot control",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "initial_joint_controller",
-            default_value="joint_trajectory_controller",
-            description="Robot controller to start.",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument("launch_rviz", default_value="true", description="Launch RViz?")
-    )
+            "launch_rviz", default_value="true", description="Launch RViz?"
+        ),
+    ]
 
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])

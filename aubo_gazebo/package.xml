@@ -2,21 +2,21 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>aubo_gazebo</name>
-  <version>0.0.0</version>
-  <description>Example and configuration files for Gazebo Classic simulation of UR manipulators.</description>
+  <version>0.0.1</version>
+  <description>Example and configuration files for Gazebo Harmonic simulation of AUBO manipulators.</description>
 
   <author>Lovro Ivanov</author>
-
-  <maintainer email="jipeng@aubo-robotics.cn">Denis Stogl</maintainer>
+  <maintainer email="jipeng@aubo-robotics.cn">Hoang Dung Dinh</maintainer>
 
   <license>BSD-3-Clause</license>
 
-
+  <!-- Build tool -->
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <!-- Runtime dependencies -->
   <exec_depend>controller_manager</exec_depend>
-  <exec_depend>gazebo_ros2_control</exec_depend>
-  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
@@ -26,6 +26,10 @@
   <exec_depend>aubo_moveit_config</exec_depend>
   <exec_depend>urdf</exec_depend>
   <exec_depend>xacro</exec_depend>
+
+  <!-- Optional: If you have ROS 2 control integration -->
+  <exec_depend>ros2_control</exec_depend>
+  <exec_depend>ros2_controllers</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
