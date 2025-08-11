@@ -57,6 +57,8 @@ def launch_setup(context, *args, **kwargs):
             ),
             " ",
             "aubo_type:=", robot_type, " ",
+            "use_fake_hardware:=true",
+            " ",
         ]
     )
     robot_description = {"robot_description": robot_description_content}
@@ -93,6 +95,18 @@ def launch_setup(context, *args, **kwargs):
         )
     )
 
+    ros_gz_bridge_node = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name=f'ros_gz_bridge',
+        parameters= [{
+            'use_sim_time': True,
+        }],
+        arguments=[
+            f'/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+        ],
+    )
+
     # Start Gazebo Harmonic (server + client GUI)
     pkg_ros_gz_sim = get_package_share_directory("ros_gz_sim")
     gazebo_process = IncludeLaunchDescription(
@@ -116,9 +130,11 @@ def launch_setup(context, *args, **kwargs):
     )
 
     return [
+        ros_gz_bridge_node,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
-        delay_rviz_after_joint_state_broadcaster_spawner,
+        # delay_rviz_after_joint_state_broadcaster_spawner,
+        rviz_node,
         gazebo_process,
         spawn_robot_process,
     ]
