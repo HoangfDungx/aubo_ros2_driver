@@ -163,8 +163,8 @@ def generate_launch_description():
 
     
     aubo_control_node = Node(
-        package="aubo_ros2_driver",
-        executable="aubo_ros2_control_node",
+        package="controller_manager",
+        executable="ros2_control_node",
         parameters=[robot_description, robot_controllers],
         output="both",
     )
