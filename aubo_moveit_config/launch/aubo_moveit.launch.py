@@ -151,6 +151,23 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+    moveit_executor_node = Node(
+        package="aubo_moveit_config",
+        executable="moveit_executor_node",
+        name="moveit_executor_node",
+        output="screen",
+        parameters=[
+            robot_description,
+            robot_description_semantic,
+            kinematics_yaml,
+            ompl_planning_pipeline_config,
+            trajectory_execution,
+            moveit_controllers,
+            planning_scene_monitor_parameters,
+            joint_limits_yaml,
+        ],
+    )
+
     # RViz
     rviz_base = os.path.join(
         get_package_share_directory("aubo_moveit_config"), "config"
@@ -195,7 +212,7 @@ def launch_setup(context, *args, **kwargs):
         parameters=[robot_description]
         )
 
-    nodes_to_start = [move_group_node, rviz_node, static_tf_node]
+    nodes_to_start = [move_group_node, moveit_executor_node, rviz_node, static_tf_node]
     return nodes_to_start
 
 
