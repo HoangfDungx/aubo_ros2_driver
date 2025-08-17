@@ -64,9 +64,11 @@ def launch_setup(context, *args, **kwargs):
         )
     }
 
-    kinematics_yaml = load_yaml(
-        "aubo_moveit_config", "config/kinematics.yaml"
-    )
+    kinematics_yaml = {
+        "robot_description_kinematics": load_yaml(
+            "aubo_moveit_config", "config/kinematics.yaml"
+        )
+    }
 
     joint_limits_yaml = {
         "robot_description_planning": load_yaml(
@@ -129,7 +131,7 @@ def launch_setup(context, *args, **kwargs):
             "publish_planning_scene_topic": "/move_group/publish_planning_scene",
             "monitored_planning_scene_topic": "/move_group/monitored_planning_scene",
             "wait_for_initial_state_timeout": 10.0,
-           }
+           },
     }
 
     # Start the actual move_group node/action server
