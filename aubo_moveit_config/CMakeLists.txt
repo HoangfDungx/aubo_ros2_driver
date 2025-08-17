@@ -25,6 +25,10 @@ target_link_libraries(moveit_executor_node
   ${ament_LIBRARIES}
 )
 
+install(TARGETS moveit_executor_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}
   PATTERN "setup_assistant.launch" EXCLUDE)
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})

@@ -8,27 +8,25 @@
 
 #include <aubo_msgs/srv/set_pose_stamped_goal.hpp>
 
-class MoveitExecutor : public rclcpp::Node
+class MoveitExecutor
 {
 public:
-    MoveitExecutor(const std::string & node_name)
-        : Node(node_name)
+    MoveitExecutor(std::shared_ptr<rclcpp::Node>& node) : node_(node)
     {
         planning_group_ = "manipulator";
-        auto node = shared_from_this();
-        move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(node, planning_group_);
+        move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(node_, planning_group_);
 
         if (!move_group_)
         {
-            RCLCPP_ERROR(this->get_logger(), "Failed to create MoveGroupInterface for planning group: %s", planning_group_.c_str());
+            RCLCPP_ERROR(node_->get_logger(), "Failed to create MoveGroupInterface for planning group: %s", planning_group_.c_str());
             throw std::runtime_error("MoveGroupInterface initialization failed");
         }
 
-        set_pose_service_ = this->create_service<aubo_msgs::srv::SetPoseStampedGoal>(
+        set_pose_service_ = node_->create_service<aubo_msgs::srv::SetPoseStampedGoal>(
             "set_end_effector_pose",
             std::bind(&MoveitExecutor::setPoseStampedGoal, this, std::placeholders::_1, std::placeholders::_2));
 
-        RCLCPP_INFO(this->get_logger(), "MoveitExecutor initialized with planning group: %s", planning_group_.c_str());
+        RCLCPP_INFO(node_->get_logger(), "MoveitExecutor initialized with planning group: %s", planning_group_.c_str());
     }
     ~MoveitExecutor() {}
 
@@ -52,22 +50,23 @@ public:
         const std::shared_ptr<aubo_msgs::srv::SetPoseStampedGoal::Request> request,
         std::shared_ptr<aubo_msgs::srv::SetPoseStampedGoal::Response> response)
     {
-        RCLCPP_INFO(this->get_logger(), "Received request to set end effector pose");
+        RCLCPP_INFO(node_->get_logger(), "Received request to set end effector pose");
         if (planAndExecute(request->goal.pose, request->speed_factor))
         {
             response->success = true;
             response->message = "Pose set successfully";
-            RCLCPP_INFO(this->get_logger(), "Pose set successfully");
+            RCLCPP_INFO(node_->get_logger(), "Pose set successfully");
         }
         else
         {
             response->success = false;
             response->message = "Failed to set pose";
-            RCLCPP_ERROR(this->get_logger(), "Failed to set pose");
+            RCLCPP_ERROR(node_->get_logger(), "Failed to set pose");
         }
     }
 
 private:
+    std::shared_ptr<rclcpp::Node> node_;
     std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
     std::string planning_group_;
 
