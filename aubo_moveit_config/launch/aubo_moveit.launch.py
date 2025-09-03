@@ -134,6 +134,10 @@ def launch_setup(context, *args, **kwargs):
            },
     }
 
+    planning_scene_objects = os.path.join(
+        get_package_share_directory("aubo_moveit_config"), "config", "planning_scene.yaml"
+    )
+
     # Start the actual move_group node/action server
     move_group_node = Node(
         package="moveit_ros_move_group",
@@ -147,6 +151,7 @@ def launch_setup(context, *args, **kwargs):
             trajectory_execution,
             moveit_controllers,
             planning_scene_monitor_parameters,
+            {"planning_scene_world": planning_scene_objects},
             joint_limits_yaml,
         ],
     )

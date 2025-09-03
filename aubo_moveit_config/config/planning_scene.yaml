@@ -1,0 +1,8 @@
+world:
+    - id: "table"
+      primitives:
+        - type: box
+          dimensions: [2.0, 2.0, 0.05]
+      primitive_poses:
+        - position: [0.0, 0.0, -0.025]
+          orientation: [0.0, 0.0, 0.0, 1.0]
