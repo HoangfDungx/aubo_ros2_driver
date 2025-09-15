@@ -3,9 +3,11 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/robot_model_loader/robot_model_loader.hpp>
 #include <moveit/robot_state/robot_state.hpp>
 #include <moveit/kinematics_base/kinematics_base.hpp>
+#include <geometric_shapes/shape_operations.h>
 #include <memory>
 #include <string>
 
@@ -18,6 +20,8 @@ public:
     {
         planning_group_ = "manipulator";
         move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(node_, planning_group_);
+        planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>();
+
         // Load robot model
         robot_model_loader::RobotModelLoader robot_model_loader(node_->shared_from_this(), "robot_description");
         kinematic_model = robot_model_loader.getModel();
@@ -28,6 +32,9 @@ public:
             throw std::runtime_error("MoveGroupInterface initialization failed");
         }
 
+        // Add table (collision object) below z=0
+        addTable();
+
         set_pose_service_ = node_->create_service<aubo_msgs::srv::SetPoseStampedGoal>(
             "set_end_effector_pose",
             std::bind(&MoveitExecutor::setPoseStampedGoal, this, std::placeholders::_1, std::placeholders::_2));
@@ -36,12 +43,11 @@ public:
     }
     ~MoveitExecutor() {}
 
-    // Example public method to plan and execute a motion
     bool planAndExecute(const geometry_msgs::msg::Pose & target_pose, const double speed_factor = 1.0)
     {
-        // move_group_->setPoseTarget(target_pose);
         move_group_->setPlanningTime(100.0);
         move_group_->setMaxVelocityScalingFactor(speed_factor);
+
         std::vector<double> joint_values;
         const moveit::core::JointModelGroup *joint_model_group = kinematic_model->getJointModelGroup(planning_group_);
 
@@ -54,11 +60,6 @@ public:
 
         kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
         move_group_->setJointValueTarget(joint_values);
-        RCLCPP_INFO(node_->get_logger(), "Joint values: ");
-        for (const auto &value : joint_values)
-        {
-            RCLCPP_INFO(node_->get_logger(), "%f, ", value);
-        }
 
         moveit::planning_interface::MoveGroupInterface::Plan plan;
         bool success = (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
@@ -70,7 +71,6 @@ public:
         return success;
     }
 
-    // Service callback to set the end effector pose
     void setPoseStampedGoal(
         const std::shared_ptr<aubo_msgs::srv::SetPoseStampedGoal::Request> request,
         std::shared_ptr<aubo_msgs::srv::SetPoseStampedGoal::Response> response)
@@ -91,8 +91,34 @@ public:
     }
 
 private:
+    void addTable()
+    {
+        moveit_msgs::msg::CollisionObject table;
+        table.header.frame_id = move_group_->getPlanningFrame();
+        table.id = "table";
+
+        shape_msgs::msg::SolidPrimitive primitive;
+        primitive.type = primitive.BOX;
+        primitive.dimensions = {2.0, 2.0, 0.05};  // 2m x 2m x 0.05m
+
+        geometry_msgs::msg::Pose table_pose;
+        table_pose.orientation.w = 1.0;
+        table_pose.position.x = 0.0;
+        table_pose.position.y = 0.0;
+        table_pose.position.z = -0.025;  // Half thickness below z=0
+
+        table.primitives.push_back(primitive);
+        table.primitive_poses.push_back(table_pose);
+        table.operation = table.ADD;
+
+        planning_scene_interface_->applyCollisionObjects({table});
+
+        RCLCPP_INFO(node_->get_logger(), "Added table (2m x 2m x 0.05m) below z=0 to the planning scene.");
+    }
+
     std::shared_ptr<rclcpp::Node> node_;
     std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
+    std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_;
     std::string planning_group_;
     moveit::core::RobotModelPtr kinematic_model;
     moveit::core::RobotStatePtr kinematic_state;
