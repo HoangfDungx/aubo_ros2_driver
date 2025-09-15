@@ -3,6 +3,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
+#include <moveit/robot_model_loader/robot_model_loader.hpp>
+#include <moveit/robot_state/robot_state.hpp>
+#include <moveit/kinematics_base/kinematics_base.hpp>
 #include <memory>
 #include <string>
 
@@ -15,7 +18,10 @@ public:
     {
         planning_group_ = "manipulator";
         move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(node_, planning_group_);
-
+        // Load robot model
+        robot_model_loader::RobotModelLoader robot_model_loader(node_->shared_from_this(), "robot_description");
+        kinematic_model = robot_model_loader.getModel();
+        kinematic_state = std::make_shared<moveit::core::RobotState>(kinematic_model);
         if (!move_group_)
         {
             RCLCPP_ERROR(node_->get_logger(), "Failed to create MoveGroupInterface for planning group: %s", planning_group_.c_str());
@@ -33,8 +39,27 @@ public:
     // Example public method to plan and execute a motion
     bool planAndExecute(const geometry_msgs::msg::Pose & target_pose, const double speed_factor = 1.0)
     {
-        move_group_->setPoseTarget(target_pose);
+        // move_group_->setPoseTarget(target_pose);
+        move_group_->setPlanningTime(100.0);
         move_group_->setMaxVelocityScalingFactor(speed_factor);
+        std::vector<double> joint_values;
+        const moveit::core::JointModelGroup *joint_model_group = kinematic_model->getJointModelGroup(planning_group_);
+
+        bool found_ik = kinematic_state->setFromIK(joint_model_group, target_pose, 0.1);
+        if (!found_ik)
+        {
+            RCLCPP_ERROR(node_->get_logger(), "IK solution not found for the given pose");
+            return false;
+        }
+
+        kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
+        move_group_->setJointValueTarget(joint_values);
+        RCLCPP_INFO(node_->get_logger(), "Joint values: ");
+        for (const auto &value : joint_values)
+        {
+            RCLCPP_INFO(node_->get_logger(), "%f, ", value);
+        }
+
         moveit::planning_interface::MoveGroupInterface::Plan plan;
         bool success = (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
 
@@ -69,6 +94,8 @@ private:
     std::shared_ptr<rclcpp::Node> node_;
     std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
     std::string planning_group_;
+    moveit::core::RobotModelPtr kinematic_model;
+    moveit::core::RobotStatePtr kinematic_state;
 
     rclcpp::Service<aubo_msgs::srv::SetPoseStampedGoal>::SharedPtr set_pose_service_;
 };
