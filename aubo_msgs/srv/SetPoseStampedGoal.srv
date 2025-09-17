@@ -1,5 +1,13 @@
+uint8 KEEP_EEF_Y_UP = 1
+uint8 KEEP_EEF_Y_DOWN = 2
+uint8 KEEP_EEF_Z_UP = 3
+uint8 KEEP_EEF_Z_DOWN = 4
+
 geometry_msgs/PoseStamped goal
 float64 speed_factor
+
+uint8[] defined_constraints
+
 ---
 bool success
 string message

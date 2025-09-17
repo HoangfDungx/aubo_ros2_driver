@@ -8,8 +8,9 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(aubo_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
-set(dependencies "rclcpp" "std_msgs" "geometry_msgs" "moveit_msgs" "aubo_msgs" "moveit_ros_planning_interface")
+set(dependencies "rclcpp" "std_msgs" "geometry_msgs" "moveit_msgs" "aubo_msgs" "moveit_ros_planning_interface" "tf2_geometry_msgs")
 
 include_directories(
   include
