@@ -7,6 +7,7 @@
 #include <moveit/robot_model_loader/robot_model_loader.hpp>
 #include <moveit/robot_state/robot_state.hpp>
 #include <moveit/kinematics_base/kinematics_base.hpp>
+#include <geometric_shapes/shape_operations.h>
 #include <memory>
 #include <string>
 
