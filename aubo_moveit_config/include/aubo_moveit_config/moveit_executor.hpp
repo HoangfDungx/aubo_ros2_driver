@@ -204,38 +204,65 @@ private:
         moveit_msgs::msg::OrientationConstraint ocm;
         ocm.link_name = "ee_link";
         ocm.header.frame_id = move_group_->getPlanningFrame();
+        ocm.weight = 1.0;
         tf2::Quaternion q;
         switch (constraint_type)
         {
-        case aubo_msgs::srv::SetPoseStampedGoal::Request::KEEP_EEF_Y_UP:
+        case aubo_msgs::srv::SetPoseStampedGoal::Request::KEEP_EEF_ROLL_PITCH:
             ocm.orientation = current_pose.pose.orientation;
-            ocm.absolute_x_axis_tolerance = M_PI / 2;
-            ocm.absolute_y_axis_tolerance = M_PI / 2;
+            ocm.absolute_x_axis_tolerance = M_PI / 8;
+            ocm.absolute_y_axis_tolerance = M_PI / 8;
             ocm.absolute_z_axis_tolerance = M_PI;
-            ocm.weight = 1.0;
+            break;
+        case aubo_msgs::srv::SetPoseStampedGoal::Request::KEEP_EEF_Y_UP:
+            q.setRPY(M_PI / 2, 0, 0);
+            ocm.orientation.x = q.x();
+            ocm.orientation.y = q.y();
+            ocm.orientation.z = q.z();
+            ocm.orientation.w = q.w();
+            ocm.absolute_x_axis_tolerance = M_PI / 8;
+            ocm.absolute_y_axis_tolerance = M_PI / 8;
+            ocm.absolute_z_axis_tolerance = M_PI;
             break;
         case aubo_msgs::srv::SetPoseStampedGoal::Request::KEEP_EEF_Z_UP:
-            ocm.orientation = current_pose.pose.orientation;
-            ocm.absolute_x_axis_tolerance = M_PI / 2;
-            ocm.absolute_y_axis_tolerance = M_PI / 2;
+            q.setRPY(0, 0, 0);
+            ocm.orientation.x = q.x();
+            ocm.orientation.y = q.y();
+            ocm.orientation.z = q.z();
+            ocm.orientation.w = q.w();
+            ocm.absolute_x_axis_tolerance = M_PI / 8;
+            ocm.absolute_y_axis_tolerance = M_PI / 8;
             ocm.absolute_z_axis_tolerance = M_PI;
-            ocm.weight = 1.0;
             break;
         case aubo_msgs::srv::SetPoseStampedGoal::Request::KEEP_EEF_Y_DOWN:
-            ocm.orientation = current_pose.pose.orientation;
-            ocm.absolute_x_axis_tolerance = M_PI / 2;
-            ocm.absolute_y_axis_tolerance = M_PI / 2;
+            q.setRPY(-M_PI / 2, 0, 0);
+            ocm.orientation.x = q.x();
+            ocm.orientation.y = q.y();
+            ocm.orientation.z = q.z();
+            ocm.orientation.w = q.w();
+            ocm.absolute_x_axis_tolerance = M_PI / 8;
+            ocm.absolute_y_axis_tolerance = M_PI / 8;
             ocm.absolute_z_axis_tolerance = M_PI;
-            ocm.weight = 1.0;
             break;
         case aubo_msgs::srv::SetPoseStampedGoal::Request::KEEP_EEF_Z_DOWN:
-            ocm.orientation = current_pose.pose.orientation;
+            q.setRPY(M_PI, 0, 0);
+            ocm.orientation.x = q.x();
+            ocm.orientation.y = q.y();
+            ocm.orientation.z = q.z();
+            ocm.orientation.w = q.w();
+            ocm.absolute_x_axis_tolerance = M_PI / 8;
+            ocm.absolute_y_axis_tolerance = M_PI / 8;
+            ocm.absolute_z_axis_tolerance = M_PI;
+            break;
+        case aubo_msgs::srv::SetPoseStampedGoal::Request::KEEP_WRIST_1_Y_DOWN:
+            ocm.link_name = "wrist1_Link";
+            q.setRPY(-M_PI / 2, 0, 0);
+            ocm.orientation.x = q.x();
+            ocm.orientation.y = q.y();
+            ocm.orientation.z = q.z();
+            ocm.orientation.w = q.w();
             ocm.absolute_x_axis_tolerance = M_PI / 2;
             ocm.absolute_y_axis_tolerance = M_PI / 2;
-            ocm.absolute_z_axis_tolerance = M_PI;
-            ocm.weight = 1.0;
-            break;
-
         default:
             break;
         }

@@ -1,7 +1,11 @@
+uint8 KEEP_EEF_ROLL_PITCH = 0
+
 uint8 KEEP_EEF_Y_UP = 1
 uint8 KEEP_EEF_Y_DOWN = 2
 uint8 KEEP_EEF_Z_UP = 3
 uint8 KEEP_EEF_Z_DOWN = 4
+
+uint8 KEEP_WRIST_1_Y_DOWN = 11
 
 geometry_msgs/PoseStamped goal
 float64 speed_factor
